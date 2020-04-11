@@ -11,10 +11,6 @@ const app = express();
 // `Authorization: Bearer <Firebase ID Token>`.
 // when decoded successfully, the ID Token content will be added as `req.user`.
 const validateFirebaseIdToken = async (req, res, next) => {
-  if (req.path === "/"){
-    next();
-    return;
-  }
   console.log('Check if request is authorized with Firebase ID token');
 
   if ((!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) &&
@@ -58,13 +54,21 @@ const validateFirebaseIdToken = async (req, res, next) => {
 app.use(cors);
 app.use(cookieParser);
 app.use(validateFirebaseIdToken);
-app.get('/hello', (req, res) => {
-  res.send(`Hello ${req.user.name}`);
+  app.get('/', (req, res) => {
+    res.send(null);
 });
-var database = admin.database();
-app.get('/', (req, res) => {
-    database.ref("test").set({toto: {dob: "2020-02-02", fn: "oki"}})
-    res.send("origin");
+app.get('/testobject', (req, res) => {
+  res.send({ type: "object"});
+});
+//list of all camera
+app.get('/camera', (req, res) => {
+  res.send();
+});
+app.post('/camera', (req, res) => {
+  admin.database().ref('user/' + req.user.uid).set({
+      target: "lol" 
+    });
+  res.send("camera successfuly added");
 });
 
 // This HTTPS endpoint can only be accessed by your Firebase Users.
