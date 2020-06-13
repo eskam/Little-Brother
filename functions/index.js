@@ -1,6 +1,17 @@
+var firebaseConfig = {
+  apiKey: "AIzaSyD8F4wTTOruQQ54QurxsiPtzPmreUerrEo",
+  authDomain: "little-brother-55371.firebaseapp.com",
+  databaseURL: "https://little-brother-55371.firebaseio.com",
+  projectId: "little-brother-55371",
+  storageBucket: "little-brother-55371.appspot.com",
+  messagingSenderId: "313102563105",
+  appId: "1:313102563105:web:136fc08996652b6b9ef060",
+  measurementId: "G-76ESB0C0N3"
+};
+
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-admin.initializeApp();
+admin.initializeApp(firebaseConfig);
 const express = require('express');
 const cookieParser = require('cookie-parser')();
 const cors = require('cors')({origin: true});
@@ -40,7 +51,7 @@ const validateFirebaseIdToken = async (req, res, next) => {
 
   try {
     const decodedIdToken = await admin.auth().verifyIdToken(idToken);
-    console.log('ID Token correctly decoded', decodedIdToken);
+    console.log(decodedIdToken);
     req.user = decodedIdToken;
     next();
     return;
@@ -50,10 +61,11 @@ const validateFirebaseIdToken = async (req, res, next) => {
     return;
   }
 };
-
+//middleware
 app.use(cors);
 app.use(cookieParser);
 app.use(validateFirebaseIdToken);
+
   app.get('/', (req, res) => {
     res.send(null);
 });
@@ -65,10 +77,16 @@ app.get('/camera', (req, res) => {
   res.send();
 });
 app.post('/camera', (req, res) => {
-  admin.database().ref('user/' + req.user.uid).set({
+  admin.database().ref('user/' + req.params.uid).set({
       target: "lol" 
     });
   res.send("camera successfuly added");
+});
+// --- USER --- //
+app.post("/user", (req, res) => {
+  console.log("req", req)
+  admin.database().ref('user/'+ req.user.user_id).child("fcm").set(req.query.fcm);
+  res.send(true);
 });
 
 // This HTTPS endpoint can only be accessed by your Firebase Users.
