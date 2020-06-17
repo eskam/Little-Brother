@@ -69,22 +69,23 @@ app.use(validateFirebaseIdToken);
   app.get('/', (req, res) => {
     res.send(null);
 });
-app.get('/testobject', (req, res) => {
-  res.send({ type: "object"});
-});
 //list of all camera
 app.get('/camera', (req, res) => {
-  res.send();
+  admin.database().ref("camera").once('value').then(function(dataSnapShot){
+    res.send(dataSnapShot)
+  });
 });
 app.post('/camera', (req, res) => {
-  admin.database().ref('user/' + req.params.uid).set({
-      target: "lol" 
-    });
+  admin.database().ref('camera').push(req.body);
   res.send("camera successfuly added");
 });
 // --- USER --- //
+app.get("/user", (req, res) => {
+  admin.database().ref("user").once('value').then(function(dataSnapShot){
+    res.send(dataSnapShot)
+  });
+});
 app.post("/user", (req, res) => {
-  console.log("req", req)
   admin.database().ref('user/'+ req.user.user_id).child("fcm").set(req.query.fcm);
   res.send(true);
 });
