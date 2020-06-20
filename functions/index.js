@@ -10,18 +10,23 @@ var firebaseConfig = {
 };
 
 const functions = require('firebase-functions');
+const bodyParser = require('body-parser')//add this
 const admin = require('firebase-admin');
-admin.initializeApp(firebaseConfig);
 const express = require('express');
 const cookieParser = require('cookie-parser')();
 const cors = require('cors')({origin: true});
 const app = express();
+
+admin.initializeApp(firebaseConfig);
+
 
 // Express middleware that validates Firebase ID Tokens passed in the Authorization HTTP header.
 // The Firebase ID token needs to be passed as a Bearer token in the Authorization HTTP header like this:
 // `Authorization: Bearer <Firebase ID Token>`.
 // when decoded successfully, the ID Token content will be added as `req.user`.
 const validateFirebaseIdToken = async (req, res, next) => {
+  console.log(req.url)
+
   console.log('Check if request is authorized with Firebase ID token');
 
   if ((!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) &&
@@ -62,32 +67,77 @@ const validateFirebaseIdToken = async (req, res, next) => {
   }
 };
 //middleware
+app.use(bodyParser.json(strict=false))
 app.use(cors);
 app.use(cookieParser);
 app.use(validateFirebaseIdToken);
 
-  app.get('/', (req, res) => {
-    res.send(null);
+app.get('/', (req, res) => {
+  res.send(null);
 });
+
 //list of all camera
-app.get('/camera', (req, res) => {
-  admin.database().ref("camera").once('value').then(function(dataSnapShot){
+app.get('/camera/big', (req, res) => {
+  admin.database().ref("camera").orderByChild("bigBrotherId").equalTo(req.user.user_id).once('value').then(function(dataSnapShot){
     res.send(dataSnapShot)
   });
 });
-app.post('/camera', (req, res) => {
-  admin.database().ref('camera').push(req.body);
-  res.send("camera successfuly added");
+
+app.get('/camera/little', (req, res) => {
+  admin.database().ref("camera").orderByChild("littleBrotherId").equalTo(req.user.user_id).once('value').then(function(dataSnapShot){
+    res.send(dataSnapShot)
+  });
 });
+
+app.post('/camera', (req, res) => {
+  admin.auth().getUserByEmail(req.body.littleBrother).then(function(userRecord){
+    console.log("uid lb: ", userRecord.uid)
+    req.body.littleBrotherId= userRecord.uid,
+    req.body.bigBrotherId= req.user.user_id,
+    req.body.accept= false
+    cam = admin.database().ref('camera').push(req.body)
+    admin.database().ref("camera/" + cam.key).update({
+      "id": cam.key
+    })
+    res.send("cam added with uid: "+ cam.key)
+  }).catch(function(error) {
+    console.log('Error fetching user data:', error);
+    res.send("error in adding cam")
+  });
+});
+
+app.delete('/camera/:id', (req, res) => {
+  admin.database().ref("camera/"+req.params.id).once('value').then(function(dataSnapShot){
+    if (dataSnapShot.child("littleBrotherId").val() == req.user.user_id || dataSnapShot.child("bigBrotherId").val() == req.user.user_id){
+      admin.database().ref("camera/"+req.params.id).remove()
+      res.send("camera deleted")
+    }
+  }).catch(function(error){
+    res.send("error")
+  });
+});
+
+app.put('/camera/:id', (req, res) => {
+  admin.database().ref("camera/"+req.params.id).once('value').then(function(dataSnapShot){
+    if (dataSnapShot.child("littleBrotherId").val() == req.user.user_id){
+      admin.database().ref("camera/"+req.params.id).update({"accept": true})
+      res.send("camera accepted")
+    }
+  }).catch(function(error){
+    res.send("error")
+  });
+});
+
 // --- USER --- //
 app.get("/user", (req, res) => {
   admin.database().ref("user").once('value').then(function(dataSnapShot){
     res.send(dataSnapShot)
   });
 });
+
 app.post("/user", (req, res) => {
-  admin.database().ref('user/'+ req.user.user_id).child("fcm").set(req.query.fcm);
-  res.send(true);
+  admin.database().ref('user/'+ req.user.user_id).set({"fcm": req.body});
+  res.send("fcm token succesfully changed/addedx");
 });
 
 // This HTTPS endpoint can only be accessed by your Firebase Users.
