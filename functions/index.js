@@ -140,6 +140,38 @@ app.post("/user", (req, res) => {
   res.send("fcm token succesfully changed/addedx");
 });
 
+// --- NOTIFICATION --- //
+app.post("/logs", (req, res) => {
+  if (req.query.entr)
+    var enterStr = "entrée"
+  else
+    var enterStr = "sortie"
+  var timestamp = new Date()
+  var date = new Date(timestamp)
+  admin.database().ref("logs/"+ req.body).push({"timestamp": Date.now(), "enter": req.query.enter})
+  admin.database().ref("camera/"+req.body).once("value").then((dataSnapshot) => { 
+    admin.database().ref("user/" + dataSnapshot.child("bigBrotherId").val()).once("value").then(function(snapShot){
+      var response = dataSnapshot.child("bigBrother").val() + " est " + enterStr+ " dans la zone \"" + dataSnapshot.child("name").val() + "\" à " + date.toUTCString().replace("T", " ").replace("Z", " ") + "."
+      var message = {
+        token: snapShot.child("fcm").val(),
+        notification: {
+          title: "Alerte littleBrother",
+          body: response,
+        }, data: {
+            channel_id: "Notification_1"
+          }
+        }
+      admin.messaging().send(message).then((response) => {
+        console.log("message sent")
+        res.send("message sent");
+      }).catch((error) => {
+        console.log("errror "+ error)
+        res.send("error");
+      })
+    })  
+  })
+})
+
 // This HTTPS endpoint can only be accessed by your Firebase Users.
 // Requests need to be authorized by providing an `Authorization` HTTP header
 // with value `Bearer <Firebase ID Token>`.
