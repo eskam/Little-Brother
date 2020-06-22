@@ -92,12 +92,33 @@ app.get('/camera/little', (req, res) => {
 app.post('/camera', (req, res) => {
   admin.auth().getUserByEmail(req.body.littleBrother).then(function(userRecord){
     console.log("uid lb: ", userRecord.uid)
-    req.body.littleBrotherId= userRecord.uid,
-    req.body.bigBrotherId= req.user.user_id,
-    req.body.accept= false
+    req.body.littleBrotherId = userRecord.uid,
+    req.body.bigBrotherId = req.user.user_id,
+    req.body.accept = false
     cam = admin.database().ref('camera').push(req.body)
     admin.database().ref("camera/" + cam.key).update({
       "id": cam.key
+    })
+    admin.database().ref("camera/"+req.body).once("value").then((dataSnapshot) => { 
+      admin.database().ref("user/" + dataSnapshot.child("littleBrotherId").val()).once("value").then(function(snapShot){
+        var response = dataSnapshot.child("bigBrother").val() + "vous a envoyer une demande de camera"
+        var message = {
+          token: snapShot.child("fcm").val(),
+          notification: {
+            title: "Alerte littleBrother",
+            body: response,
+          }, data: {
+              channel_id: "Notification_1"
+            }
+          }
+        admin.messaging().send(message).then((response) => {
+          console.log("message sent")
+          res.send("message sent");
+        }).catch((error) => {
+          console.log("errror "+ error)
+          res.send("error");
+        })
+      })  
     })
     res.send("cam added with uid: "+ cam.key)
   }).catch(function(error) {
@@ -151,7 +172,7 @@ app.post("/logs", (req, res) => {
   admin.database().ref("logs/"+ req.body).push({"timestamp": Date.now(), "enter": req.query.enter})
   admin.database().ref("camera/"+req.body).once("value").then((dataSnapshot) => { 
     admin.database().ref("user/" + dataSnapshot.child("bigBrotherId").val()).once("value").then(function(snapShot){
-      var response = dataSnapshot.child("bigBrother").val() + " est " + enterStr+ " dans la zone \"" + dataSnapshot.child("name").val() + "\" à " + date.toUTCString().replace("T", " ").replace("Z", " ") + "."
+      var response = dataSnapshot.child("littleBrother").val() + " est " + enterStr+ " dans la zone \"" + dataSnapshot.child("name").val() + "\" à " + date.toUTCString().replace("T", " ").replace("Z", " ") + "."
       var message = {
         token: snapShot.child("fcm").val(),
         notification: {
