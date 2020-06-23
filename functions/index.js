@@ -99,26 +99,22 @@ app.post('/camera', (req, res) => {
     admin.database().ref("camera/" + cam.key).update({
       "id": cam.key
     })
-    admin.database().ref("camera/"+req.body).once("value").then((dataSnapshot) => { 
-      admin.database().ref("user/" + dataSnapshot.child("littleBrotherId").val()).once("value").then(function(snapShot){
-        var response = dataSnapshot.child("bigBrother").val() + "vous a envoyer une demande de camera"
-        var message = {
-          token: snapShot.child("fcm").val(),
-          notification: {
-            title: "Alerte littleBrother",
+    admin.database().ref("user/" + req.body.littleBrotherId).once("value").then((snapshot) => {
+      var response = req.body.bigBrother+ "vous a envoyer une demande de camera"
+      var message = {
+        token: snapshot.child("fcm").val(),
+        notification: {
+        title: "Alerte littleBrother",
             body: response,
           }, data: {
               channel_id: "Notification_1"
             }
           }
-        admin.messaging().send(message).then((response) => {
-          console.log("message sent")
-          res.send("message sent");
-        }).catch((error) => {
-          console.log("errror "+ error)
-          res.send("error");
-        })
-      })  
+      admin.messaging().send(message).then((response) => {
+        console.log("message sent")
+      }).catch((error) => {
+        console.log("errror "+ error)
+      })
     })
     res.send("cam added with uid: "+ cam.key)
   }).catch(function(error) {
